@@ -67,8 +67,8 @@ body {
       /* Walidacja - niepoprawne pole */
       .invalid { border: 2px solid #ef4444 !important; background: #ffe5e5 !important; }
 
-      html, body { height: 100vh; margin: 0; overflow: hidden; }
-      .container { display: flex; flex-direction: column; height: 100vh; }
+      html, body { height: var(--app-height); margin: 0; overflow: hidden; }
+      .container { display: flex; flex-direction: column; height: var(--app-height); }
       /* Compact sizing to fit on one screen */
       th, td { padding: 4px 6px; }
       input[type="text"] { padding: 4px 6px; font-size: .95em; }
@@ -77,7 +77,18 @@ body {
       .tabs { margin-bottom: 8px; }
       .tab { padding: 4px 8px; }
       .small { font-size: 11px; }
-    </style>
+    
+/* --- var(--app-height) responsive layout --- */
+html, body { height: var(--app-height); margin: 0 !important; padding: 0; }
+body { display: flex; flex-direction: column; }
+.container { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* compact top controls to free up height */
+h1 { margin: 6px 8px !important; font-size: 18px; }
+.tabs, .flex { margin: 0 8px 6px 8px !important; }
+.table-wrapper { flex: 1; min-height: 0; overflow-y: auto; }
+/* prevent extra spacing */
+th, td { padding: 6px 8px; }
+</style>
   </head>
   <body>
     <div id="app"></div>
@@ -468,7 +479,7 @@ body {
               <button className="btn btn-primary" style={{paddingLeft: 14}} onClick={addPlayer}>Dodaj gracza</button>
             </div>
 
-            <div>
+            <div className="table-wrapper">
               <table>
                 <thead>
                   <tr className="thick-bottom">
@@ -492,7 +503,7 @@ body {
                         <td key={p.id+key}>
                           <input
                             type="text"
-                            placeholder="± liczba lub X"
+                            placeholder="± liczba lub X" inputMode="numeric" pattern="[0-9Xx\+\-]*"
                             className={p.invalid?.[key] ? "invalid" : ""}
                             value={p.cells[key] ?? ""}
                             onChange={e => updateCell(p.id, key, e.target.value)}
@@ -532,7 +543,7 @@ body {
                         <td key={p.id+key}>
                           <input
                             type="text"
-                            placeholder="liczba lub X"
+                            placeholder="liczba lub X" inputMode="numeric" pattern="[0-9Xx]*"
                             className={p.invalid?.[key] ? "invalid" : ""}
                             value={p.cells[key] ?? ""}
                             onChange={e => updateCell(p.id, key, e.target.value)}
@@ -571,5 +582,14 @@ body {
       ReactDOM.createRoot(document.getElementById("app")).render(<App />);
     </script>
 
-  </body>
+  
+<script>
+function setAppHeight() {
+  document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+}
+window.addEventListener('resize', setAppHeight);
+setAppHeight();
+</script>
+
+</body>
 </html>
