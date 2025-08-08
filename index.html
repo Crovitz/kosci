@@ -1,0 +1,586 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tablica wyników – gra w kości</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+.container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* ważne żeby scroll działał poprawnie */
+}
+.table-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+      :root { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji"; }
+      body { margin: 16px; }
+      table { border-collapse: separate; border-spacing: 0; width: 100%; }
+      th, td { border-bottom: 1px solid #e5e7eb; padding: 8px 10px; vertical-align: top; }
+      th { text-align: left; background: #fafafa; position: sticky; top: 0; z-index: 2; }
+      .rowlbl { position: sticky; left: 0; background: #fff; z-index: 1; }
+      input[type="text"] { width: 100%; padding: 8px 10px; box-sizing: border-box; font-size: 1.15em; }
+      .btn { padding: 6px 10px; border: 1px solid #d1d5db; background: #fff; border-radius: 8px; cursor: pointer; }
+      .btn:hover { background: #f9fafb; }
+      .btn-primary { border-color: #2563eb; background: #2563eb; color: #fff; }
+      .btn-primary:hover { background: #1d4ed8; }
+      .tabs { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;}
+      .tab { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid #e5e7eb; border-radius: 999px; background: #fff; }
+      .tab.active { background: #eef2ff; border-color: #c7d2fe; }
+      .tag { font-size: 12px; padding: 2px 6px; border: 1px solid #e5e7eb; border-radius: 999px; background: #fff; }
+      .small { font-size: 12px; opacity: .7; }
+      .flex { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+      .right { margin-left:auto; }
+
+      /* Zebra striping (skip special rows) */
+      tbody tr:nth-child(even):not(.xrow):not(.sumrow) td,
+      tbody tr:nth-child(even):not(.xrow):not(.sumrow) th.rowlbl {
+        background: #f6fbff;
+      }
+
+      /* Grubsze linie zgodnie z kartką */
+      .thick-bottom { border-bottom-width: 2px !important; }
+      .thick-top    { border-top: 2px solid #111 !important; }
+      .thick-bottom-strong { border-bottom: 2px solid #111 !important; }
+
+      /* Specjalne wiersze */
+      .xrow td, .xrow th { background: #f0f5ff; font-weight: 600; }
+      .sumrow td, .sumrow th { background: #eef2f7; font-weight: 800; }
+
+      /* Czerwony X usuń gracza */
+      .remove-btn { color: red; font-weight: bold; border: none; background: none; cursor: pointer; font-size: 14px; }
+      .remove-btn:hover { color: darkred; }
+
+      /* Walidacja - niepoprawne pole */
+      .invalid { border: 2px solid #ef4444 !important; background: #ffe5e5 !important; }
+
+      html, body { height: 100vh; margin: 0; overflow: hidden; }
+      .container { display: flex; flex-direction: column; height: 100vh; }
+      /* Compact sizing to fit on one screen */
+      th, td { padding: 4px 6px; }
+      input[type="text"] { padding: 4px 6px; font-size: .95em; }
+      .btn { padding: 4px 8px; }
+      h1 { font-size: 18px; margin: 8px 0; }
+      .tabs { margin-bottom: 8px; }
+      .tab { padding: 4px 8px; }
+      .small { font-size: 11px; }
+    
+/* --- 100vh responsive layout --- */
+html, body { height: 100vh; margin: 0 !important; padding: 0; }
+body { display: flex; flex-direction: column; }
+.container { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+/* compact top controls to free up height */
+h1 { margin: 6px 8px !important; font-size: 18px; }
+.tabs, .flex { margin: 0 8px 6px 8px !important; }
+.table-wrapper { flex: 1; min-height: 0; overflow-y: auto; }
+/* prevent extra spacing */
+th, td { padding: 6px 8px; }
+</style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <!-- React via CDN + JSX -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+    
+    <script type="text/babel">
+      const { useState, useEffect, useRef } = React;
+
+      // Szkółka: S1..S6
+      const SCHOOL = [
+        { key: "S1", label: "1" },
+        { key: "S2", label: "2" },
+        { key: "S3", label: "3" },
+        { key: "S4", label: "4" },
+        { key: "S5", label: "5" },
+        { key: "S6", label: "6" },
+      ];
+      // Dół
+      const BOTTOM = [
+        { key: "B1P", label: "1P" },
+        { key: "B2P", label: "2P" },
+        { key: "BMS", label: "MS" },
+        { key: "BDS", label: "DS" },
+        { key: "B3",  label: "3"  },
+        { key: "BF",  label: "F"  },
+        { key: "BK",  label: "K"  },
+        { key: "BP",  label: "P"  },
+        { key: "BSZ", label: "SZ" },
+      ];
+
+      // Dozwolone wartości w szkółce
+      const SCHOOL_ALLOWED = {
+        S1: ["-3","-2","-1","X","+1","+2"],
+        S2: ["-6","-4","-2","X","+2","+4"],
+        S3: ["-9","-6","-3","X","+3","+6"],
+        S4: ["-12","-8","-4","X","+4","+8"],
+        S5: ["-15","-10","-5","X","+5","+10"],
+        S6: ["-18","-12","-6","X","+6","+12"],
+      };
+      // Dozwolone wartości na dole (w tym full x2 „z ręki”)
+      const BOTTOM_ALLOWED = {
+        B1P: ["X","2","4","6","8","10","12","16","20","24"],
+        B2P: ["X","4","8","12","16","20","24","32","36","40","44","48"],
+        BMS: ["X","15","30"],
+        BDS: ["X","20","40"],
+        B3:  ["X","3","6","9","12","15","18","24","30","36"],
+        BF:  [
+          "X",
+          "5","7","9","11","13","15","17","19","21","23","25","27","29",
+          "10","14","18","22","26","30","34","38","42","46","50","54","58"
+        ],
+        BK:  ["X","4","8","12","16","20","24","32","40","48"],
+        BP:  ["X","55","60","65","70","75","80","90","100","110"],
+        BSZ: ["X", ...Array.from({length:26}, (_,i)=>String(i+5))],
+      };
+
+      const FOCUSABLE_ROWS = [...SCHOOL.map(r => r.key), ...BOTTOM.map(r => r.key)];
+      const ALL_KEYS = [...SCHOOL.map(r => r.key), "X", ...BOTTOM.map(r => r.key), "SUMA"];
+
+      function emptyCells() { const o={}; for(const k of ALL_KEYS) o[k]=""; return o; }
+      function parseIntOr0(v) {
+        if (v == null) return 0;
+        const t = String(v).trim().toUpperCase();
+        if (!t || t === "X" || t === "-" || t === "0" || t === "+0") return 0;
+        const n = Number(t);
+        return Number.isFinite(n) ? Math.trunc(n) : 0;
+      }
+      function isIntString(s){
+        if(!s) return false;
+        let t=s.trim();
+        if (!t) return false;
+        if (t[0]==="+" || t[0]==="-") t=t.slice(1);
+        if (!t) return false;
+        for (const ch of t) if (ch < "0" || ch > "9") return false;
+        return true;
+      }
+      function enforceSigned(val){
+        const tRaw=String(val).trim(), t=tRaw.toUpperCase();
+        if(!t) return "";
+        if(t==="X") return "X";
+        if(t==="-" ) return "-";        // pozwól wpisać minus i dopiero potem cyfrę
+        if(t==="0"||t==="+0") return "X";
+        if(!isIntString(tRaw)) return "";
+        const n=Number(tRaw);
+        return n<0 ? String(n) : "+"+String(n);
+      }
+
+      function schoolRaw(p){ return SCHOOL.reduce((a,r)=>a+parseIntOr0(p.cells[r.key]),0); }
+      function schoolX(p){
+        const raw=schoolRaw(p);
+        let x=raw;
+        if(raw>=10) x+=50;
+        if(raw<=-10) x-=50;
+        return { raw, x: Number(x) };
+      }
+      function bottomSum(p){
+        return BOTTOM.reduce((sum,r)=>{
+          const base=parseIntOr0(p.cells[r.key]);
+          const bonus=p.bottomCompleted && p.bottomBonusRow===r.key ? 50 : 0;
+          return sum+base+bonus;
+        },0);
+      }
+
+      function isBottomFilled(p){
+        return BOTTOM.every(r=>{
+          const v=(p.cells[r.key]??"").toString().trim().toUpperCase();
+          return v && v !== "-";
+        });
+      }
+      function isBottomCompleteForBonus(p){
+        return BOTTOM.every(r=>{
+          const v=(p.cells[r.key]??"").toString().trim().toUpperCase();
+          return v && v !== "-" && v !== "X";
+        });
+      }
+      function isSchoolFilled(p){
+        return SCHOOL.every(r=>{
+          const v=(p.cells[r.key]??"").toString().trim();
+          return v && v !== "-";
+        });
+      }
+      function hasAnyPlusInSchool(p){
+        return SCHOOL.some(r => parseIntOr0(p.cells[r.key]) > 0);
+      }
+
+      // Animations
+      function fireworksOnce(){
+        if (typeof confetti !== "function") return;
+        const duration = 1800;
+        const end = Date.now() + duration;
+        (function frame() {
+          confetti({ particleCount: 5, startVelocity: 35, spread: 360, origin: { x: Math.random(), y: Math.random()*0.6 } });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        })();
+      }
+      function sadTears(){
+        if (typeof confetti !== "function") return;
+        const duration = 1800;
+        const end = Date.now() + duration;
+        (function frame() {
+          confetti({
+            particleCount: 6,
+            angle: 90,
+            spread: 25,
+            startVelocity: 25,
+            gravity: 1.6,
+            colors: ["#60a5fa","#3b82f6","#93c5fd"],
+            scalar: 0.9,
+            origin: { x: 0.5, y: 0 }
+          });
+          if (Date.now() < end) requestAnimationFrame(frame);
+        })();
+      }
+
+      function App(){
+        const [games,setGames]=useState(()=>{
+          try{
+            const saved=localStorage.getItem("dice-scores-tabs-v2");
+            if(saved) return JSON.parse(saved);
+          }catch{}
+          return [{ id:String(Date.now()), title:"Gra 1", liveCalc:true, players:[] }];
+        });
+        const [activeIdx,setActiveIdx]=useState(0);
+        const active=games[activeIdx];
+
+        useEffect(()=>{ localStorage.setItem("dice-scores-tabs-v2", JSON.stringify(games)); },[games]);
+
+        function updateActive(upd){ setGames(gs=>gs.map((g,i)=>i===activeIdx?upd(g):g)); }
+        function newGame(){
+          setGames(gs=>{
+            const next={ id:String(Date.now()), title:`Gra ${gs.length+1}`, liveCalc:true, players:[] };
+            setActiveIdx(gs.length);
+            return [...gs,next];
+          });
+        }
+        function closeGame(i){
+          setGames(gs=>{
+            const copy=[...gs];
+            copy.splice(i,1);
+            const nextIdx=Math.max(0, Math.min(activeIdx, copy.length-1));
+            setActiveIdx(nextIdx);
+            return copy.length?copy:[{ id:String(Date.now()), title:"Gra 1", liveCalc:true, players:[] }];
+          });
+        }
+        function renameActive(){
+          const title=prompt("Tytuł zakładki:", active.title);
+          if (title==null) return;
+          updateActive(g=>({ ...g, title: title || g.title }));
+        }
+        function addPlayer(){
+          const id=prompt("Inicjały (unikalne w grze)?")?.trim().toUpperCase();
+          if(!id) return;
+          if(active.players.some(p=>p.id===id)){ alert("Inicjały muszą być unikalne."); return; }
+          updateActive(g=>({ ...g, players:[...g.players, { id, cells:emptyCells(), invalid:{}, bottomCompleted:false, bottomBonusRow: undefined, flags:{} }] }));
+        }
+        function removePlayer(id){
+          if (confirm("Na pewno chcesz usunąć gracza?")) {
+            updateActive(g=>({ ...g, players: g.players.filter(p=>p.id!==id) }));
+          }
+        }
+
+        // Refs do nawigacji
+        const inputRefs = useRef({});
+        function setInputRef(pid, rowKey, el){
+          if(!inputRefs.current[pid]) inputRefs.current[pid] = {};
+          inputRefs.current[pid][rowKey] = el;
+        }
+
+        // nawigacja strzałkami
+        function focusMove(pid, rowKey, dx, dy){
+          const playerIds = active.players.map(p=>p.id);
+          const col = playerIds.indexOf(pid);
+          const rowIdx = FOCUSABLE_ROWS.indexOf(rowKey);
+          if (col === -1 || rowIdx === -1) return;
+
+          let nextCol = col + dx;
+          let nextRowIdx = rowIdx + dy;
+
+          if (nextRowIdx < 0) { nextRowIdx = FOCUSABLE_ROWS.length - 1; nextCol -= 1; }
+          if (nextRowIdx >= FOCUSABLE_ROWS.length) { nextRowIdx = 0; nextCol += 1; }
+
+          if (nextCol < 0) nextCol = playerIds.length - 1;
+          if (nextCol >= playerIds.length) nextCol = 0;
+
+          const nextPid = playerIds[nextCol];
+          const nextKey = FOCUSABLE_ROWS[nextRowIdx];
+          const el = inputRefs.current?.[nextPid]?.[nextKey];
+          if (el) el.focus();
+        }
+
+        function onKeyDownArrows(e, pid, rowKey){
+          if (e.key === "ArrowUp")   { e.preventDefault(); focusMove(pid, rowKey, 0, -1); }
+          if (e.key === "ArrowDown") { e.preventDefault(); focusMove(pid, rowKey, 0, +1); }
+          if (e.key === "ArrowLeft") { e.preventDefault(); focusMove(pid, rowKey, -1, 0); }
+          if (e.key === "ArrowRight"){ e.preventDefault(); focusMove(pid, rowKey, +1, 0); }
+        }
+
+        function updateCell(pid,rowKey,value){
+          updateActive(g=>{
+            const players=g.players.map(p=>{
+              if(p.id!==pid) return p;
+              const cells={...p.cells};
+              const invalid = {...(p.invalid || {})};
+              const flags = {...(p.flags || {})};
+              const isSchoolRow = SCHOOL.some(r=>r.key===rowKey);
+              const isBottomRow = BOTTOM.some(r=>r.key===rowKey);
+
+              if (isSchoolRow){
+                const enforced = enforceSigned(value);
+                cells[rowKey] = (enforced === "+0" || enforced === "0") ? "X" : enforced;
+
+                const val = String(cells[rowKey]).toUpperCase();
+                if (val === "" || val === "-") {
+                  delete invalid[rowKey];
+                } else if (SCHOOL_ALLOWED[rowKey]?.includes(val)) {
+                  delete invalid[rowKey];
+                } else {
+                  invalid[rowKey] = true;
+                }
+              } else if (isBottomRow){
+                // wejście na dół: cała szkółka lub jakikolwiek plus
+                const schoolFilled = isSchoolFilled(p);
+                const anyPlus = hasAnyPlusInSchool(p);
+                if (!schoolFilled && !anyPlus) {
+                  alert("Najpierw skończ szkółkę (1–6) lub miej chociaż jednego plusa na górze.");
+                  return { ...p, cells, invalid, flags };
+                }
+
+                let t = String(value).trim().toUpperCase();
+                if (t === "") cells[rowKey] = "";
+                else if (t === "0" || t === "+0") cells[rowKey] = "X";
+                else if (t === "X") cells[rowKey] = "X";
+                else if (isIntString(t)) cells[rowKey] = String(parseInt(t,10));
+                else cells[rowKey] = "";
+
+                const val = String(cells[rowKey]).toUpperCase();
+                if (val === "" || val === "-") {
+                  delete invalid[rowKey];
+                } else if (BOTTOM_ALLOWED[rowKey]?.includes(val)) {
+                  delete invalid[rowKey];
+                } else {
+                  invalid[rowKey] = true;
+                }
+
+                // fajerwerki przy poprawnym pokerze (nie X)
+                if (rowKey === "BP" && BOTTOM_ALLOWED.BP.includes(val) && val !== "X") {
+                  setTimeout(fireworksOnce, 2000);
+                }
+              }
+
+              // Bonus +50 tylko gdy dół kompletny bez X
+              const completeForBonus = isBottomCompleteForBonus({ ...p, cells });
+              let bottomCompleted = p.bottomCompleted;
+              let bottomBonusRow = p.bottomBonusRow;
+              if (completeForBonus && !p.bottomCompleted && isBottomRow && (cells[rowKey]??"").trim()!==""){
+                bottomCompleted = true;
+                bottomBonusRow = rowKey;
+              }
+              if (!completeForBonus){
+                bottomCompleted = false;
+                bottomBonusRow = undefined;
+              }
+
+              // Emocje po skończeniu szkółki z bonusem
+              const { raw } = schoolX({ ...p, cells });
+              const schoolDone = isSchoolFilled({ ...p, cells });
+              if (schoolDone) {
+                if (raw >= 10 && !flags.schoolPos) {
+                  flags.schoolPos = true;
+                  setTimeout(fireworksOnce, 2000);
+                } else if (raw <= -10 && !flags.schoolNeg) {
+                  flags.schoolNeg = true;
+                  setTimeout(sadTears, 2000);
+                }
+              }
+
+              return { ...p, cells, invalid, bottomCompleted, bottomBonusRow, flags };
+            });
+            return { ...g, players };
+          });
+        }
+
+        function exportAll(){
+          const data = JSON.stringify({ games }, null, 2);
+          const blob = new Blob([data], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url; a.download = "wyniki-kosci-zakladki.json"; a.click();
+          URL.revokeObjectURL(url);
+        }
+        function importAll(e){
+          const f=e.target.files?.[0];
+          if(!f) return;
+          const reader=new FileReader();
+          reader.onload=()=>{
+            try{
+              const parsed=JSON.parse(String(reader.result));
+              if (Array.isArray(parsed.games)){
+                parsed.games.forEach(g => (g.players||[]).forEach(p => { p.invalid = p.invalid || {}; p.flags = p.flags || {}; }));
+                setGames(parsed.games);
+                setActiveIdx(0);
+              } else alert("Plik nie zawiera poprawnych danych.");
+            }catch{ alert("Niepoprawny plik JSON."); }
+          };
+          reader.readAsText(f);
+        }
+
+        if(!active) return null;
+
+        function showXFor(p){ return active.liveCalc || isSchoolFilled(p); }
+        function showTotalFor(p){ return active.liveCalc || (isSchoolFilled(p) && isBottomFilled(p)); }
+
+        return (
+          <div className="container">
+            <h1 style={{marginBottom: 12}}>Tablica wyników – gra w kości</h1>
+
+            <div className="tabs">
+              {games.map((g,i) => (
+                <div key={g.id} className={"tab " + (i===activeIdx ? "active" : "")}>
+                  <button className="btn" onClick={() => setActiveIdx(i)}>{g.title}</button>
+                  <button className="btn" title="Zmień tytuł" onClick={renameActive}>✎</button>
+                  <button className="btn" title="Zamknij zakładkę" onClick={() => closeGame(i)}>×</button>
+                </div>
+              ))}
+              <button className="btn" onClick={newGame}>Nowa gra</button>
+              <div className="right"></div>
+              <button className="btn" onClick={exportAll}>Zapisz wszystkie</button>
+              <label className="btn">
+                Wczytaj
+                <input type="file" accept="application/json" style={{display:"none"}} onChange={importAll}/>
+              </label>
+            </div>
+
+            <div className="flex" style={{margin: "8px 0 16px"}}>
+              <label style={{display:"inline-flex", alignItems:"center", gap:8}}>
+                <input type="checkbox"
+                       checked={!!active.liveCalc}
+                       onChange={e => updateActive(g => ({...g, liveCalc: e.target.checked}))}/>
+                <span>Liczenie na żywo</span>
+              </label>
+              <div className="right"></div>
+              <button className="btn btn-primary" style={{paddingLeft: 14}} onClick={addPlayer}>Dodaj gracza</button>
+            </div>
+
+            <div className="table-wrapper">
+              <table>
+                <thead>
+                  <tr className="thick-bottom">
+                    <th className="rowlbl">Wiersz</th>
+                    {active.players.map(p => (
+                      <th key={"h"+p.id}>
+                        <div className="flex">
+                          <strong>{p.id}</strong>
+                          <button className="remove-btn" title="Usuń gracza" onClick={()=>removePlayer(p.id)}>✖</button>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Szkółka */}
+                  {SCHOOL.map(({key,label}) => (
+                    <tr key={key}>
+                      <td className="rowlbl"><strong>{label}</strong></td>
+                      {active.players.map(p => (
+                        <td key={p.id+key}>
+                          <input
+                            type="text"
+                            placeholder="± liczba lub X"
+                            className={p.invalid?.[key] ? "invalid" : ""}
+                            value={p.cells[key] ?? ""}
+                            onChange={e => updateCell(p.id, key, e.target.value)}
+                            onKeyDown={e => onKeyDownArrows(e, p.id, key)}
+                            ref={el => setInputRef(p.id, key, el)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+
+                  {/* X – suma szkółki */}
+                  <tr className="xrow">
+                    <td className="rowlbl thick-top thick-bottom-strong"><strong>X</strong></td>
+                    {active.players.map(p => {
+                      const { raw, x } = schoolX(p);
+                      const show = showXFor(p);
+                      const displayVal = x === 0 ? "X" : (x > 0 ? `+${x}` : x);
+                      return (
+                        <td key={p.id+"X"} className="thick-top thick-bottom-strong">
+                          {show ? (
+                            <>
+                              <div>{displayVal}</div>
+                              <div className="small">(suma szkółki: {raw}{raw >= 10 ? " + 50" : (raw <= -10 ? " - 50" : "")})</div>
+                            </>
+                          ) : <span className="small" style={{opacity:.6}}>wypełnij 1–6</span>}
+                        </td>
+                      );
+                    })}
+                  </tr>
+
+                  {/* Dół */}
+                  {BOTTOM.map(({key,label}) => (
+                    <tr key={key}>
+                      <td className="rowlbl"><strong>{label}</strong></td>
+                      {active.players.map(p => (
+                        <td key={p.id+key}>
+                          <input
+                            type="text"
+                            placeholder="liczba lub X"
+                            className={p.invalid?.[key] ? "invalid" : ""}
+                            value={p.cells[key] ?? ""}
+                            onChange={e => updateCell(p.id, key, e.target.value)}
+                            onKeyDown={e => onKeyDownArrows(e, p.id, key)}
+                            ref={el => setInputRef(p.id, key, el)}
+                          />
+                          {(p.bottomCompleted && p.bottomBonusRow === key) && (
+                            <div className="tag">+50 za komplet dołu</div>
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+
+                  {/* SUMA */}
+                  <tr className="sumrow">
+                    <td className="rowlbl thick-top"><strong>SUMA</strong></td>
+                    {active.players.map(p => {
+                      const { x } = schoolX(p);
+                      const bottom = bottomSum(p);
+                      const show = showTotalFor(p);
+                      return (
+                        <td key={p.id+"SUMA"} className="thick-top">
+                          {show ? ( (x === 0 ? 0 : x) + bottom ) : ""}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("app")).render(<App />);
+    </script>
+
+  </body>
+</html>
