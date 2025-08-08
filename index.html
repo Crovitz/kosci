@@ -255,7 +255,7 @@ th, td { padding: 6px 8px; }
             const saved=localStorage.getItem("dice-scores-tabs-v2");
             if(saved) return JSON.parse(saved);
           }catch{}
-          return [{ id:String(Date.now()), title:"Gra 1", liveCalc:false, players:[] }];
+          return [{ id:String(Date.now()), title:"Gra 1", liveCalc:true, players:[] }];
         });
         const [activeIdx,setActiveIdx]=useState(0);
         const active=games[activeIdx];
@@ -265,7 +265,7 @@ th, td { padding: 6px 8px; }
         function updateActive(upd){ setGames(gs=>gs.map((g,i)=>i===activeIdx?upd(g):g)); }
         function newGame(){
           setGames(gs=>{
-            const next={ id:String(Date.now()), title:`Gra ${gs.length+1}`, liveCalc:false, players:[] };
+            const next={ id:String(Date.now()), title:`Gra ${gs.length+1}`, liveCalc:true, players:[] };
             setActiveIdx(gs.length);
             return [...gs,next];
           });
@@ -276,7 +276,7 @@ th, td { padding: 6px 8px; }
             copy.splice(i,1);
             const nextIdx=Math.max(0, Math.min(activeIdx, copy.length-1));
             setActiveIdx(nextIdx);
-            return copy.length?copy:[{ id:String(Date.now()), title:"Gra 1", liveCalc:false, players:[] }];
+            return copy.length?copy:[{ id:String(Date.now()), title:"Gra 1", liveCalc:true, players:[] }];
           });
         }
         function renameActive(){
@@ -333,10 +333,7 @@ th, td { padding: 6px 8px; }
         }
 
         function updateCell(pid,rowKey,value){
-          // Zamiana # -> X dla wygody na klawiaturach mobilnych
-          if (String(value).trim() === '#') value = 'X';
-          if (String(value).trim() === '*') value = 'X';
-updateActive(g=>{
+          updateActive(g=>{
             const players=g.players.map(p=>{
               if(p.id!==pid) return p;
               const cells={...p.cells};
@@ -506,7 +503,7 @@ updateActive(g=>{
                         <td key={p.id+key}>
                           <input
                             type="text"
-                            placeholder="± liczba lub X" inputMode="tel" pattern="[\+\-0-9Xx]*"
+                            placeholder="± liczba lub X" inputMode="numeric" pattern="[0-9Xx\+\-]*"
                             className={p.invalid?.[key] ? "invalid" : ""}
                             value={p.cells[key] ?? ""}
                             onChange={e => updateCell(p.id, key, e.target.value)}
@@ -546,7 +543,7 @@ updateActive(g=>{
                         <td key={p.id+key}>
                           <input
                             type="text"
-                            placeholder="liczba lub X" inputMode="tel" pattern="[0-9Xx]*"
+                            placeholder="liczba lub X" inputMode="numeric" pattern="[0-9Xx]*"
                             className={p.invalid?.[key] ? "invalid" : ""}
                             value={p.cells[key] ?? ""}
                             onChange={e => updateCell(p.id, key, e.target.value)}
