@@ -67,8 +67,8 @@ body {
       /* Walidacja - niepoprawne pole */
       .invalid { border: 2px solid #ef4444 !important; background: #ffe5e5 !important; }
 
-      html, body { height: 100vh; margin: 0; overflow: hidden; }
-      .container { display: flex; flex-direction: column; height: 100vh; }
+      html, body { height: var(--app-height); margin: 0; overflow: hidden; }
+      .container { display: flex; flex-direction: column; height: var(--app-height); }
       /* Compact sizing to fit on one screen */
       th, td { padding: 4px 6px; }
       input[type="text"] { padding: 4px 6px; font-size: .95em; }
@@ -78,8 +78,8 @@ body {
       .tab { padding: 4px 8px; }
       .small { font-size: 11px; }
     
-/* --- 100vh responsive layout --- */
-html, body { height: 100vh; margin: 0 !important; padding: 0; }
+/* --- var(--app-height) responsive layout --- */
+html, body { height: var(--app-height); margin: 0 !important; padding: 0; }
 body { display: flex; flex-direction: column; }
 .container { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 /* compact top controls to free up height */
@@ -582,5 +582,14 @@ th, td { padding: 6px 8px; }
       ReactDOM.createRoot(document.getElementById("app")).render(<App />);
     </script>
 
-  </body>
+  
+<script>
+function setAppHeight() {
+  document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`);
+}
+window.addEventListener('resize', setAppHeight);
+setAppHeight();
+</script>
+
+</body>
 </html>
