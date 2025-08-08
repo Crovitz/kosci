@@ -503,7 +503,7 @@ th, td { padding: 6px 8px; }
                         <td key={p.id+key}>
                           <input
                             type="text"
-                            placeholder="± liczba lub X" inputMode="numeric" pattern="[0-9Xx\+\-]*"
+                            placeholder="± liczba lub X" inputMode="tel" pattern="[\+\-0-9Xx]*"
                             className={p.invalid?.[key] ? "invalid" : ""}
                             value={p.cells[key] ?? ""}
                             onChange={e => updateCell(p.id, key, e.target.value)}
@@ -543,7 +543,7 @@ th, td { padding: 6px 8px; }
                         <td key={p.id+key}>
                           <input
                             type="text"
-                            placeholder="liczba lub X" inputMode="numeric" pattern="[0-9Xx]*"
+                            placeholder="liczba lub X" inputMode="tel" pattern="[0-9Xx]*"
                             className={p.invalid?.[key] ? "invalid" : ""}
                             value={p.cells[key] ?? ""}
                             onChange={e => updateCell(p.id, key, e.target.value)}
