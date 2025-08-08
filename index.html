@@ -335,6 +335,7 @@ th, td { padding: 6px 8px; }
         function updateCell(pid,rowKey,value){
           // Zamiana # -> X dla wygody na klawiaturach mobilnych
           if (String(value).trim() === '#') value = 'X';
+          if (String(value).trim() === '*') value = 'X';
 updateActive(g=>{
             const players=g.players.map(p=>{
               if(p.id!==pid) return p;
